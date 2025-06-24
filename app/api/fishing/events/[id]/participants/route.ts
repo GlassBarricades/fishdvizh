@@ -2,25 +2,35 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/db';
 
+// Тип для параметров контекста
+type RouteContext = {
+  params: { id: string };
+};
+
 // Получить список участников события
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: RouteContext
 ) {
   try {
-    const { id } = context.params;
+    const { id } = params;
     
     if (!id) {
-      return NextResponse.json({ error: 'Не указан ID события' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Не указан ID события' }, 
+        { status: 400 }
+      );
     }
     
-    // Проверяем существование события
     const event = await prisma.fishingEvent.findUnique({
       where: { id },
     });
     
     if (!event) {
-      return NextResponse.json({ error: 'Событие не найдено' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Событие не найдено' }, 
+        { status: 404 }
+      );
     }
     
     const participants = await prisma.fishingParticipant.findMany({
@@ -51,22 +61,27 @@ export async function GET(
 // Зарегистрироваться на событие
 export async function POST(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: RouteContext
 ) {
   try {
     const session = await auth();
     
     if (!session?.user) {
-      return NextResponse.json({ error: 'Не авторизован' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Не авторизован' }, 
+        { status: 401 }
+      );
     }
     
-    const { id: eventId } = context.params;
+    const { id: eventId } = params;
     
     if (!eventId) {
-      return NextResponse.json({ error: 'Не указан ID события' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Не указан ID события' }, 
+        { status: 400 }
+      );
     }
     
-    // Проверяем существование события
     const event = await prisma.fishingEvent.findUnique({
       where: { id: eventId },
       include: {
@@ -75,10 +90,12 @@ export async function POST(
     });
     
     if (!event) {
-      return NextResponse.json({ error: 'Событие не найдено' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'Событие не найдено' }, 
+        { status: 404 }
+      );
     }
     
-    // Проверяем, не зарегистрирован ли пользователь уже
     const existingParticipant = await prisma.fishingParticipant.findFirst({
       where: {
         fishingEventId: eventId,
@@ -93,8 +110,8 @@ export async function POST(
       );
     }
     
-    // Проверяем, не превышено ли максимальное количество участников
-    if (event.maxParticipants !== null && event.participants.length >= event.maxParticipants) {
+    if (event.maxParticipants !== null && 
+        event.participants.length >= event.maxParticipants) {
       return NextResponse.json(
         { error: 'Достигнуто максимальное количество участников' },
         { status: 400 }
@@ -104,7 +121,6 @@ export async function POST(
     const body = await request.json();
     const { notes } = body || {};
     
-    // Создаем запись об участии
     const participant = await prisma.fishingParticipant.create({
       data: {
         fishingEventId: eventId,
@@ -128,24 +144,27 @@ export async function POST(
 // Отменить регистрацию на событие
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  { params }: RouteContext
 ) {
   try {
     const session = await auth();
     
     if (!session?.user) {
-      return NextResponse.json({ error: 'Не авторизован' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Не авторизован' }, 
+        { status: 401 }
+      );
     }
     
-    const { id: eventId } = context.params;
+    const { id: eventId } = params;
     
     if (!eventId) {
-      return NextResponse.json({ error: 'Не указан ID события' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Не указан ID события' }, 
+        { status: 400 }
+      );
     }
     
-    console.log(`Отмена регистрации пользователя ${session.user.id} на событие ${eventId}`);
-    
-    // Находим запись об участии
     const participant = await prisma.fishingParticipant.findFirst({
       where: {
         fishingEventId: eventId,
@@ -154,21 +173,15 @@ export async function DELETE(
     });
     
     if (!participant) {
-      console.log('Запись об участии не найдена');
       return NextResponse.json(
         { error: 'Вы не зарегистрированы на это событие' },
         { status: 404 }
       );
     }
     
-    console.log(`Найдена запись об участии: ${participant.id}`);
-    
-    // Удаляем запись об участии
     await prisma.fishingParticipant.delete({
       where: { id: participant.id },
     });
-    
-    console.log('Запись об участии успешно удалена');
     
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -178,4 +191,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-} 
+}
