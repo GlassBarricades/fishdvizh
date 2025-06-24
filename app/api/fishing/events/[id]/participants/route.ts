@@ -2,15 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import prisma from '@/lib/db';
 
-// Тип для параметров контекста
-type RouteContext = {
-  params: { id: string };
-};
-
 // Получить список участников события
 export async function GET(
   request: NextRequest,
-  { params }: RouteContext
+  { params }: { params: { id: string } }
 ) {
   try {
     const { id } = params;
@@ -61,7 +56,7 @@ export async function GET(
 // Зарегистрироваться на событие
 export async function POST(
   request: NextRequest,
-  { params }: RouteContext
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await auth();
@@ -144,7 +139,7 @@ export async function POST(
 // Отменить регистрацию на событие
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteContext
+  { params }: { params: { id: string } }
 ) {
   try {
     const session = await auth();
