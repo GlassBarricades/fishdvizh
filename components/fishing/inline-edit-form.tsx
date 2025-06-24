@@ -1,0 +1,295 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useSession } from 'next-auth/react';
+import { X } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+interface InlineEditFormProps {
+  eventId: string;
+  eventData: any;
+  onCancel: () => void;
+  onUpdated: (eventId: string) => void;
+}
+
+export function InlineEditForm({ eventId, eventData, onCancel, onUpdated }: InlineEditFormProps) {
+  const { data: session } = useSession();
+  
+  const [title, setTitle] = useState(eventData?.title || '');
+  const [description, setDescription] = useState(eventData?.description || '');
+  const [startDate, setStartDate] = useState(
+    eventData?.startDate 
+      ? new Date(eventData.startDate).toISOString().slice(0, 16)
+      : new Date().toISOString().slice(0, 16)
+  );
+  const [endDate, setEndDate] = useState(
+    eventData?.endDate 
+      ? new Date(eventData.endDate).toISOString().slice(0, 16)
+      : ''
+  );
+  const [latitude, setLatitude] = useState(eventData?.latitude || 0);
+  const [longitude, setLongitude] = useState(eventData?.longitude || 0);
+  const [fishTypes, setFishTypes] = useState(eventData?.fishTypes || '');
+  const [weather, setWeather] = useState(eventData?.weather || '');
+  const [format, setFormat] = useState(eventData?.format || 'solo');
+  const [maxParticipants, setMaxParticipants] = useState<string>(
+    eventData?.maxParticipants !== null && eventData?.maxParticipants !== undefined 
+      ? eventData.maxParticipants.toString() 
+      : ''
+  );
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  
+  // Обновляем состояние формы при изменении данных события
+  useEffect(() => {
+    if (eventData) {
+      setTitle(eventData.title || '');
+      setDescription(eventData.description || '');
+      setLatitude(eventData.latitude || 0);
+      setLongitude(eventData.longitude || 0);
+      setStartDate(eventData.startDate ? new Date(eventData.startDate).toISOString().slice(0, 16) : new Date().toISOString().slice(0, 16));
+      setEndDate(eventData.endDate ? new Date(eventData.endDate).toISOString().slice(0, 16) : '');
+      setFishTypes(eventData.fishTypes || '');
+      setWeather(eventData.weather || '');
+      setFormat(eventData.format || 'solo');
+      setMaxParticipants(
+        eventData.maxParticipants !== null && eventData.maxParticipants !== undefined 
+          ? eventData.maxParticipants.toString() 
+          : ''
+      );
+    }
+  }, [eventData]);
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!title || !startDate) {
+      setError('Заполните обязательные поля');
+      return;
+    }
+    
+    if (!session?.user) {
+      setError('Необходимо авторизоваться');
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      setError('');
+      
+      console.log('Отправляем данные для обновления события:');
+      console.log('ID события:', eventId);
+      console.log('Формат соревнования:', format);
+      
+      const requestData = {
+        title,
+        description,
+        latitude,
+        longitude,
+        startDate: new Date(startDate).toISOString(),
+        endDate: endDate ? new Date(endDate).toISOString() : null,
+        fishTypes,
+        weather,
+        format,
+        maxParticipants: maxParticipants ? parseInt(maxParticipants) : null,
+      };
+      
+      console.log('Данные запроса:', JSON.stringify(requestData, null, 2));
+      
+      const response = await fetch(`/api/fishing/events/${eventId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        console.error('Ошибка API:', data);
+        throw new Error(data.error || 'Ошибка при обновлении события');
+      }
+      
+      const updatedEvent = await response.json();
+      console.log('Событие успешно обновлено:', updatedEvent);
+      
+      // Вызываем callback для обновления данных в родительском компоненте
+      onUpdated(eventId);
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Произошла ошибка при обновлении события');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-bold">Редактирование события</h2>
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={onCancel}
+        >
+          <X className="h-5 w-5" />
+        </Button>
+      </div>
+      
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
+            {error}
+          </div>
+        )}
+        
+        <div className="space-y-1">
+          <label className="text-sm font-medium">
+            Координаты
+          </label>
+          <div className="flex gap-2">
+            <Input 
+              value={latitude.toFixed(6)} 
+              onChange={(e) => setLatitude(parseFloat(e.target.value) || 0)}
+              className="bg-gray-50"
+            />
+            <Input 
+              value={longitude.toFixed(6)} 
+              onChange={(e) => setLongitude(parseFloat(e.target.value) || 0)}
+              className="bg-gray-50"
+            />
+          </div>
+        </div>
+        
+        <div className="space-y-1">
+          <label htmlFor="title" className="text-sm font-medium">
+            Название события *
+          </label>
+          <Input
+            id="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Например: Ловля карпа на озере"
+            required
+            autoFocus
+            className={!title ? "border-red-300 focus:ring-red-500" : ""}
+          />
+        </div>
+        
+        <div className="space-y-1">
+          <label htmlFor="description" className="text-sm font-medium">
+            Описание
+          </label>
+          <Textarea
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Дополнительная информация о событии"
+            rows={3}
+          />
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label htmlFor="startDate" className="text-sm font-medium">
+              Дата начала *
+            </label>
+            <Input
+              id="startDate"
+              type="datetime-local"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              required
+              className={!startDate ? "border-red-300 focus:ring-red-500" : ""}
+            />
+          </div>
+          
+          <div className="space-y-1">
+            <label htmlFor="endDate" className="text-sm font-medium">
+              Дата окончания
+            </label>
+            <Input
+              id="endDate"
+              type="datetime-local"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              min={startDate}
+            />
+          </div>
+        </div>
+        
+        <div className="space-y-1">
+          <label htmlFor="format" className="text-sm font-medium">
+            Формат соревнования *
+          </label>
+          <Select
+            value={format}
+            onValueChange={setFormat}
+          >
+            <SelectTrigger id="format">
+              <SelectValue placeholder="Выберите формат соревнования" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="solo">Сольное участие</SelectItem>
+              <SelectItem value="team_2">Команда 2 человека</SelectItem>
+              <SelectItem value="team_3">Команда 3 человека</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="space-y-1">
+          <label htmlFor="fishTypes" className="text-sm font-medium">
+            Виды рыбы
+          </label>
+          <Input
+            id="fishTypes"
+            value={fishTypes}
+            onChange={(e) => setFishTypes(e.target.value)}
+            placeholder="Например: карп, щука, окунь"
+          />
+        </div>
+        
+        <div className="space-y-1">
+          <label htmlFor="weather" className="text-sm font-medium">
+            Погодные условия
+          </label>
+          <Input
+            id="weather"
+            value={weather}
+            onChange={(e) => setWeather(e.target.value)}
+            placeholder="Например: солнечно, 25°C"
+          />
+        </div>
+        
+        <div className="space-y-1">
+          <label htmlFor="maxParticipants" className="text-sm font-medium">
+            Максимальное количество участников
+          </label>
+          <Input
+            id="maxParticipants"
+            type="number"
+            min="1"
+            value={maxParticipants}
+            onChange={(e) => setMaxParticipants(e.target.value)}
+            placeholder="Оставьте пустым для неограниченного количества"
+          />
+        </div>
+        
+        <div className="flex justify-end gap-2 pt-4">
+          <Button variant="outline" onClick={onCancel} type="button">
+            Отмена
+          </Button>
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? 'Сохранение...' : 'Сохранить изменения'}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+} 

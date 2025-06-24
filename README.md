@@ -1,36 +1,141 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fishdvizh - Менеджер задач
 
-## Getting Started
+Проект построен с использованием следующего стека технологий:
 
-First, run the development server:
+- **React** - библиотека для создания пользовательских интерфейсов
+- **Next.js** - фреймворк для React с серверным рендерингом
+- **TanStack Query** - библиотека для работы с серверными данными
+- **Prisma** - ORM для работы с базой данных
+- **PostgreSQL** - реляционная база данных (через Open Server v5)
+- **shadcn/ui** - набор компонентов для React
+- **Tailwind CSS** - утилитарный CSS-фреймворк
 
+## Функциональность
+
+- Создание, редактирование, удаление задач
+- Отметка задач как выполненных
+- Сохранение данных в PostgreSQL
+
+## Начало работы
+
+1. Клонируйте репозиторий:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/yourusername/fishdvizh.git
+cd fishdvizh
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Установите зависимости:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Настройте базу данных PostgreSQL через Open Server v5:
+   - Установите и запустите Open Server v5
+   - Настройте PostgreSQL согласно инструкции в [docs/open-server-setup.md](docs/open-server-setup.md)
+   - Запустите интерактивный скрипт настройки окружения:
+   ```bash
+   npm run setup-env
+   ```
+   - Проверьте подключение к PostgreSQL:
+   ```bash
+   npm run check-postgres
+   ```
+   - Создайте базу данных:
+   ```bash
+   npm run init-postgres
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Примените миграции к базе данных:
+```bash
+npm run prisma:migrate
+```
 
-## Learn More
+5. Сгенерируйте клиент Prisma:
+```bash
+npm run prisma:generate
+```
 
-To learn more about Next.js, take a look at the following resources:
+6. Запустите приложение:
+```bash
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+7. Откройте [http://localhost:3000](http://localhost:3000) в браузере.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Миграция с SQLite на PostgreSQL
 
-## Deploy on Vercel
+Если у вас уже есть данные в SQLite и вы хотите перенести их в PostgreSQL:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Убедитесь, что PostgreSQL запущен в Open Server
+2. Проверьте подключение к PostgreSQL:
+```bash
+npm run check-postgres
+```
+3. Создайте базу данных:
+```bash
+npm run init-postgres
+```
+4. Запустите скрипт миграции:
+```bash
+npm run migrate-to-postgres
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Доступные скрипты
+
+- `npm run dev` - запуск приложения в режиме разработки
+- `npm run build` - сборка приложения
+- `npm run start` - запуск собранного приложения
+- `npm run lint` - проверка кода линтером
+- `npm run setup-env` - интерактивная настройка переменных окружения
+- `npm run check-postgres` - проверка подключения к PostgreSQL
+- `npm run init-postgres` - создание базы данных PostgreSQL
+- `npm run prisma:migrate` - применение миграций Prisma
+- `npm run prisma:generate` - генерация клиента Prisma
+- `npm run migrate-to-postgres` - миграция данных из SQLite в PostgreSQL
+
+## Решение проблем
+
+### Ошибка подключения к PostgreSQL
+
+Если вы видите ошибку: `Can't reach database server at localhost:5432`
+
+1. Убедитесь, что Open Server запущен (зеленый индикатор в трее)
+2. Проверьте, что модуль PostgreSQL активирован в настройках
+3. Запустите проверку подключения:
+```bash
+npm run check-postgres
+```
+4. Если проблема не решена, проверьте настройки PostgreSQL в Open Server:
+   - Порт (по умолчанию 5432)
+   - Пароль пользователя postgres
+   - Статус сервера PostgreSQL
+
+### Ошибка миграции
+
+Если вы видите ошибку при миграции, связанную с несоответствием провайдера базы данных:
+
+1. Удалите директорию миграций:
+```bash
+rm -r prisma/migrations
+```
+2. Запустите миграцию заново:
+```bash
+npm run prisma:migrate
+```
+
+### Дополнительная информация
+
+Подробные инструкции по настройке PostgreSQL в Open Server доступны в файле [docs/open-server-setup.md](docs/open-server-setup.md).
+
+## Структура проекта
+
+- `/app` - роутинг и страницы Next.js
+- `/components` - React компоненты
+- `/lib` - утилиты и хуки
+- `/prisma` - схема и миграции Prisma
+- `/scripts` - скрипты для миграции данных
+- `/docs` - документация по настройке и использованию
+
+## Лицензия
+
+MIT

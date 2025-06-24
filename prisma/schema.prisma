@@ -1,0 +1,212 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  rating        Int       @default(1000) // Рейтинг пользователя (начальное значение 1000)
+  accounts      Account[]
+  sessions      Session[]
+  tasks         Task[]
+  fishingEvents FishingEvent[]
+  participations FishingParticipant[]
+  ownedTeams    Team[]           // Команды, созданные пользователем
+  teamMemberships TeamMember[]   // Членство пользователя в командах
+  ratingHistory UserRatingHistory[] // История изменения рейтинга пользователя
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Task {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?
+  completed   Boolean   @default(false)
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model FishingEvent {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  latitude    Float
+  longitude   Float
+  startDate   DateTime
+  endDate     DateTime?
+  fishTypes   String?   // Список типов рыб, разделенный запятыми
+  weather     String?   // Информация о погоде
+  format      String    @default("solo") // Формат соревнования: solo, team_2, team_3
+  maxParticipants Int?  // Максимальное количество участников (null - без ограничений)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  participants FishingParticipant[]
+  teamParticipations TeamParticipation[] // Участие команд в событии
+  catches     FishCatch[]
+  results     EventResult[] // Результаты соревнования
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model FishingParticipant {
+  id            String       @id @default(cuid())
+  fishingEventId String
+  fishingEvent   FishingEvent @relation(fields: [fishingEventId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name           String
+  contact        String?
+  notes          String?      // Дополнительная информация от участника
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model FishCatch {
+  id            String       @id @default(cuid())
+  fishingEventId String
+  fishingEvent   FishingEvent @relation(fields: [fishingEventId], references: [id], onDelete: Cascade)
+  fishType       String
+  weight         Float?
+  length         Float?
+  photo          String?
+  notes          String?
+  caughtAt       DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+// Модель команды рыболовов
+model Team {
+  id          String    @id @default(cuid())
+  name        String    // Название команды
+  description String?   // Описание команды
+  logo        String?   // URL логотипа команды
+  rating      Int       @default(1000) // Рейтинг команды (начальное значение 1000)
+  ownerId     String    // ID создателя команды
+  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  members     TeamMember[] // Участники команды
+  participations TeamParticipation[] // Участие команды в событиях
+  ratingHistory TeamRatingHistory[] // История изменения рейтинга команды
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// Модель участника команды
+model TeamMember {
+  id          String    @id @default(cuid())
+  teamId      String    // ID команды
+  team        Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId      String    // ID пользователя
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String    @default("member") // Роль в команде: owner, admin, member
+  joinedAt    DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([teamId, userId]) // Пользователь может быть только один раз в команде
+}
+
+// Модель участия команды в событии
+model TeamParticipation {
+  id            String       @id @default(cuid())
+  teamId        String       // ID команды
+  team          Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  fishingEventId String      // ID события
+  fishingEvent   FishingEvent @relation(fields: [fishingEventId], references: [id], onDelete: Cascade)
+  notes         String?      // Дополнительная информация от команды
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([teamId, fishingEventId]) // Команда может участвовать в событии только один раз
+}
+
+// Модель результатов соревнования
+model EventResult {
+  id            String       @id @default(cuid())
+  fishingEventId String      // ID события
+  fishingEvent   FishingEvent @relation(fields: [fishingEventId], references: [id], onDelete: Cascade)
+  participantType String      // Тип участника: "user" или "team"
+  participantId   String      // ID участника (пользователя или команды)
+  place         Int          // Место в соревновании
+  score         Int          // Количество очков
+  ratingChange  Int          // Изменение рейтинга
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([fishingEventId, participantType, participantId]) // Уникальный результат для участника в событии
+}
+
+// История изменения рейтинга пользователя
+model UserRatingHistory {
+  id            String       @id @default(cuid())
+  userId        String       // ID пользователя
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fishingEventId String?     // ID события (может быть null для ручных изменений)
+  oldRating     Int          // Предыдущий рейтинг
+  newRating     Int          // Новый рейтинг
+  change        Int          // Изменение рейтинга
+  reason        String       // Причина изменения рейтинга
+  createdAt     DateTime     @default(now())
+}
+
+// История изменения рейтинга команды
+model TeamRatingHistory {
+  id            String       @id @default(cuid())
+  teamId        String       // ID команды
+  team          Team         @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  fishingEventId String?     // ID события (может быть null для ручных изменений)
+  oldRating     Int          // Предыдущий рейтинг
+  newRating     Int          // Новый рейтинг
+  change        Int          // Изменение рейтинга
+  reason        String       // Причина изменения рейтинга
+  createdAt     DateTime     @default(now())
+}
